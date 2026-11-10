@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: viceclips
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/library
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+    disk:
+      name: viceclips-data
+      mountPath: /var/data
+      sizeGB: 10
