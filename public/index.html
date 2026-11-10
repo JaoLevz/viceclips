@@ -1,0 +1,71 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ViceClips</title>
+<style>
+:root{--bg:#0b0715;--card:#161026;--line:#2a1f45;--tx:#ece8f7;--mu:#9a8fb8;--p:#a855f7;--b:#38bdf8;--r:#f43f5e}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 400px at 85% -10%,#f43f5e33,transparent),radial-gradient(900px 500px at 0 0,#7c3aed40,transparent),var(--bg);color:var(--tx);font:15px system-ui,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{font-weight:900;font-size:22px;letter-spacing:1px;background:linear-gradient(90deg,var(--p),var(--b),var(--r));-webkit-background-clip:text;color:transparent}
+nav{display:flex;gap:6px;margin-left:auto}nav button{background:none;border:1px solid var(--line);color:var(--mu);padding:8px 14px;border-radius:8px;cursor:pointer}nav button.on{color:#fff;border-color:var(--p);background:#a855f722}
+main{max-width:1000px;margin:auto;padding:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+#drop{border:2px dashed var(--p);text-align:center;padding:36px 16px;cursor:pointer;border-radius:14px}#drop.over{background:#a855f722}
+button.pri{background:linear-gradient(90deg,var(--p),var(--r));border:0;color:#fff;font-weight:700;padding:11px 18px;border-radius:10px;cursor:pointer}
+button.sm{background:#241a3d;border:1px solid var(--line);color:var(--tx);padding:7px 11px;border-radius:8px;cursor:pointer;text-decoration:none;font-size:13px;display:inline-block}button.sm.red{color:var(--r)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}.clip video{width:100%;border-radius:10px;background:#000;max-height:300px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}label{display:block;color:var(--mu);font-size:13px}
+input,select{width:100%;margin-top:4px;background:#0f0a1d;border:1px solid var(--line);color:var(--tx);padding:8px;border-radius:8px}input[type=checkbox],input[type=radio]{width:auto}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}.mode{border:2px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}.mode.on{border-color:var(--b);background:#38bdf814}
+.bar{height:12px;background:#0f0a1d;border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--p),var(--b),var(--r));transition:width .4s}
+.mu{color:var(--mu);font-size:13px}.warn{color:#fbbf24;font-size:13px}.err{color:var(--r)}.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.hide{display:none}h3{margin:.2em 0 .6em}
+</style></head><body>
+<header><div class="logo">▲ VICECLIPS</div><span class="mu">Cortes inteligentes para lives e gameplays</span><nav><button id="n1" class="on" onclick="tab(1)">Início</button><button id="n2" onclick="tab(2)">Biblioteca</button></nav></header>
+<main>
+<section id="t1">
+ <div class="card" id="drop"><div style="font-size:34px">🎬</div><b>Arraste seu vídeo aqui</b><div class="mu">MP4, MOV ou WEBM — vídeos grandes são enviados em streaming</div><p><button class="pri" onclick="event.stopPropagation();f.click()">Enviar vídeo</button></p><input type="file" id="f" accept=".mp4,.mov,.webm,video/*" hidden>
+  <div class="bar hide" id="ub"><i></i></div><div class="mu" id="um"></div></div>
+ <div class="card hide" id="cfg"><h3>Configurar edição — <span id="vn"></span></h3>
+  <div class="modes"><div class="mode on" data-m="clips"><b>GERAR CLIPES</b><div class="mu">Vários clipes independentes</div></div><div class="mode" data-m="best"><b>MELHORES MOMENTOS</b><div class="mu">Uma compilação contínua</div></div></div>
+  <div class="opts"><label>Formato<select id="fmt"><option value="vertical">Vertical 9:16 (TikTok/Reels/Shorts)</option><option value="horizontal">Horizontal 16:9 (YouTube)</option></select></label>
+  <label>Duração mínima (s)<input id="min" type="number" value="15"></label><label>Duração máxima (s)<input id="max" type="number" value="60"></label>
+  <label id="lc">Qtd. de clipes (0 = auto)<input id="cnt" type="number" value="0"></label><label id="lt" class="hide">Duração da compilação (min)<input id="tg" type="number" value="3" step=".5"></label>
+  <label>Nível de seleção<select id="lv"><option value="loose">Abrangente</option><option value="normal" selected>Equilibrado</option><option value="strict">Só os melhores</option></select></label>
+  <label>Legendas<br><input id="sb" type="checkbox" checked> automáticas (requer OPENAI_API_KEY)</label></div>
+  <p><button class="pri" id="go">Processar vídeo</button></p></div>
+ <div class="card hide" id="prog"><h3 id="ps">Processando…</h3><div class="bar"><i id="pb"></i></div><div class="mu" id="pi"></div><div id="pw"></div></div>
+ <div id="res"></div>
+</section>
+<section id="t2" class="hide"><div id="lib"></div></section>
+</main>
+<script>
+const $=s=>document.querySelector(s);let vid=null,mode='clips';const f=$('#f'),drop=$('#drop');
+const mm=x=>`${Math.floor(x/60)}:${String(Math.floor(x%60)).padStart(2,'0')}`;
+const api=async(u,o)=>{const r=await fetch(u,o),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Erro '+r.status);return j};
+function tab(n){$('#t1').classList.toggle('hide',n!=1);$('#t2').classList.toggle('hide',n!=2);$('#n1').classList.toggle('on',n==1);$('#n2').classList.toggle('on',n==2);if(n==2)lib()}
+drop.onclick=()=>f.click();drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');up(e.dataTransfer.files[0])};f.onchange=()=>up(f.files[0]);
+document.querySelectorAll('.mode').forEach(m=>m.onclick=()=>{mode=m.dataset.m;document.querySelectorAll('.mode').forEach(x=>x.classList.toggle('on',x==m));$('#lc').classList.toggle('hide',mode=='best');$('#lt').classList.toggle('hide',mode!='best')});
+function up(file){if(!file)return;if(!/\.(mp4|mov|webm)$/i.test(file.name))return alert('Formato não suportado. Use MP4, MOV ou WEBM.');
+ const x=new XMLHttpRequest();x.open('POST','/api/upload?name='+encodeURIComponent(file.name));$('#ub').classList.remove('hide');
+ x.upload.onprogress=e=>{$('#ub i').style.width=e.loaded/e.total*100+'%';$('#um').textContent=`Enviando… ${Math.round(e.loaded/e.total*100)}%`};
+ x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch{}if(x.status!=200)return $('#um').innerHTML=`<span class=err>${j.error||'Falha no envio'}</span>`;
+  vid=j;$('#um').textContent=`Enviado: ${j.name} (${mm(j.duration)})`;$('#vn').textContent=j.name;$('#cfg').classList.remove('hide')};
+ x.onerror=async()=>{let m='O servidor interrompeu o envio. Veja a mensagem de erro no terminal onde o servidor está rodando.';
+  if(location.protocol=='file:')m='Você abriu o arquivo index.html direto. Rode <code>node server.js</code> e acesse <b>http://localhost:3000</b>.';
+  else try{await fetch('/api/library')}catch{m='O servidor não está respondendo. Verifique se o terminal mostra "ViceClips em http://localhost:...", e se não caiu.'}
+  $('#um').innerHTML='<span class=err>Falha no envio: '+m+'</span>'};x.send(file)}
+$('#go').onclick=async()=>{$('#go').disabled=true;$('#res').innerHTML='';$('#prog').classList.remove('hide');
+ try{let j=await api(`/api/videos/${vid.id}/process`,{method:'POST',body:JSON.stringify({mode,format:$('#fmt').value,min:$('#min').value,max:$('#max').value,count:$('#cnt').value,target:$('#tg').value,level:$('#lv').value,subs:$('#sb').checked})});
+  while(j.status=='running'){await new Promise(r=>setTimeout(r,1200));j=await api('/api/jobs/'+j.id);$('#ps').textContent=j.step;$('#pb').style.width=j.progress+'%';$('#pi').textContent=`Momentos encontrados: ${j.moments} · Clipes gerados: ${j.clips}`;$('#pw').innerHTML=j.warnings.map(w=>`<div class=warn>⚠ ${w}</div>`).join('')}
+  if(j.status=='error')throw new Error(j.error);$('#ps').textContent='✅ Concluído';
+  $('#res').innerHTML=`<h3>Resultado</h3>`+(mode=='clips'?`<p><a class="sm" href="/api/videos/${vid.id}/zip">⬇ Baixar todos (ZIP)</a></p>`:'');cards(j.items,$('#res'))}
+ catch(e){$('#ps').innerHTML=`<span class=err>Erro: ${e.message}</span>`}$('#go').disabled=false};
+function cards(items,el){const g=document.createElement('div');g.className='grid';g.innerHTML=items.map(i=>`<div class="card clip" id="c${i.id}"><video controls preload="metadata" src="/files/out/${i.file}#t=0.1"></video>
+ <b>${esc(i.title)}</b><div class="mu">${i.type=='clip'?'Clipe':'Compilação'} · ${Math.round(i.dur)}s · ${i.format=='vertical'?'9:16':'16:9'} · ${new Date(i.created).toLocaleString('pt-BR')}</div>
+ <div class="row"><button class="sm" onclick="this.closest('.clip').querySelector('video').play()">▶ Reproduzir</button><a class="sm" href="/files/out/${i.file}?dl=1&n=${encodeURIComponent(i.title.slice(0,40))}">⬇ Baixar</a><button class="sm red" onclick="del('${i.id}')">Excluir</button></div>
+ ${i.type=='clip'?`<details class="row"><summary class="mu">✂ Editar início/fim</summary><label>Início no original (s)<input type=number step=.5 value="${i.start.toFixed(1)}"></label><label>Fim (s)<input type=number step=.5 value="${i.end.toFixed(1)}"></label><button class="sm" onclick="edit('${i.id}',this)">Aplicar</button></details>`:''}</div>`).join('');el.appendChild(g)}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function edit(id,b){const [a,z]=[...b.parentElement.querySelectorAll('input')].map(i=>+i.value);b.textContent='Renderizando…';b.disabled=true;
+ try{await api('/api/items/'+id,{method:'PUT',body:JSON.stringify({start:a,end:z})});const v=document.querySelector(`#c${id} video`);v.src=v.src.split('#')[0].split('?')[0]+'?v='+Date.now();b.textContent='Aplicado ✔'}catch(e){alert(e.message);b.textContent='Aplicar'}b.disabled=false}
+async function del(id){if(!confirm('Excluir?'))return;await api('/api/items/'+id,{method:'DELETE'});document.getElementById('c'+id)?.remove();if(!$('#t2').classList.contains('hide'))lib()}
+async function lib(){const d=await api('/api/library'),el=$('#lib');el.innerHTML='';
+ el.innerHTML='<div class="card"><h3>Vídeos originais</h3>'+(d.videos.map(v=>`<div class="row" style="justify-content:space-between;align-items:center"><span>${esc(v.name)} <span class="mu">· ${mm(v.duration)} · ${new Date(v.created).toLocaleString('pt-BR')}</span></span><span class="row"><a class="sm" target=_blank href="/files/uploads/${v.file}">Ver</a><a class="sm" href="/files/uploads/${v.file}?dl=1&n=${encodeURIComponent(v.name.slice(0,40))}">Baixar</a><a class="sm" href="/api/videos/${v.id}/zip">ZIP clipes</a><button class="sm red" onclick="if(confirm('Excluir vídeo e todos os clipes?'))api('/api/videos/${v.id}',{method:'DELETE'}).then(lib)">Excluir</button></span></div>`).join('')||'<span class=mu>Nenhum vídeo ainda.</span>')+'</div>';
+ for(const[t,n]of[['clip','Clipes individuais'],['compilation','Compilações']]){const l=d.items.filter(i=>i.type==t);const h=document.createElement('div');h.innerHTML=`<h3>${n}</h3>${l.length?'':'<span class=mu>Vazio.</span>'}`;el.appendChild(h);if(l.length)cards(l,h)}}
+</script></body></html>
